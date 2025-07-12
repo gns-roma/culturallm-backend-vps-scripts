@@ -1,25 +1,22 @@
+#!/bin/bash
+
 HEADER="[pre-deploy.sh]"
 BACKEND_DIR="/home/backend/"
 
-echo "$HEADER copio il file compose dentro culturallm-backend/"
-if cp "$BACKEND_DIR"docker-compose-backup.yaml "$BACKEND_DIR"culturallm-backend/; then
-    echo "$HEADER copia del file avvenuta con successo."
-else
-    echo "$HEADER errore durante la copia del file."
-fi
-
-echo "$HEADER rimuovo il vecchio file compose da dentro culturallm-backend/"
-if rm "$BACKEND_DIR"culturallm-backend/docker-compose.yaml; then
-    echo "$HEADER rimozione avvenuta con successo."
-else 
-    echo "$HEADER errore durante la rimozione del file."
+# Copia il file compose
+if ! cp "$BACKEND_DIR"docker-compose-backup.yaml "$BACKEND_DIR"culturallm-backend/; then
+    echo "$HEADER Errore durante la copia del file docker-compose-backup.yaml." >&2
     exit 1
 fi
 
-echo "$HEADER rinomino il file con il giusto nome"
-if mv "$BACKEND_DIR"culturallm-backend/docker-compose-backup.yaml "$BACKEND_DIR"culturallm-backend/docker-compose.yaml; then
-    echo "$HEADER rinominazione del file avvenuta con successo."
-else 
-    echo "$HEADER errore durante la rinominazione del file."
+# Rimuove il vecchio file compose
+if ! rm "$BACKEND_DIR"culturallm-backend/docker-compose.yaml; then
+    echo "$HEADER Errore durante la rimozione del vecchio docker-compose.yaml." >&2
+    exit 1
+fi
+
+# Rinomina il file in modo corretto
+if ! mv "$BACKEND_DIR"culturallm-backend/docker-compose-backup.yaml "$BACKEND_DIR"culturallm-backend/docker-compose.yaml; then
+    echo "$HEADER Errore durante la rinominazione del file in docker-compose.yaml." >&2
     exit 1
 fi
