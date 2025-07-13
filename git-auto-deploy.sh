@@ -71,9 +71,9 @@ if [ -f "$HASH_FILE" ] && [ "$CURRENT_HASH" == "$(cat "$HASH_FILE")" ]; then
             echo "[$(date)] ✅ Docker avviato."
         else
             echo "[$(date)] ⚠️ Docker attivo ma container $TARGET_CONTAINER fermo."
-            deploy_docker_compose
-            merge_log
         fi
+        deploy_docker_compose
+        merge_log
     else
         echo "[$(date)] ✅ Container $TARGET_CONTAINER già attivo."
     fi
