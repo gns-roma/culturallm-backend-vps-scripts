@@ -29,8 +29,10 @@ trap on_error ERR
 deploy_docker_compose() {
     if docker compose up -d --build; then
         echo "[$(date)] ✅ Deploy completato con successo."
+        merge_log
     else
         echo "[$(date)] ❌ Errore durante docker compose up"
+        merge_log
         exit 1
     fi
 }
@@ -54,38 +56,37 @@ if [ -x "$PRE_DEPLOY_SCRIPT" ]; then
     "$PRE_DEPLOY_SCRIPT"
 else
     echo "[$(date)] ❌ Nessun pre-deploy script trovato."
+    exit 1
+fi
+
+# Se il container non è attivo...
+if ! docker ps --format '{{.Names}}' | grep -q "^$TARGET_CONTAINER$"; then
+    echo "[$(date)] ⚠️ Container $TARGET_CONTAINER non attivo."
+
+    # Verifica se Docker è attivo
+    if ! systemctl is-active --quiet docker; then
+        echo "[$(date)] 🔄 Docker non attivo. Avvio in corso..."
+        sudo systemctl start docker
+        echo "[$(date)] ✅ Docker avviato."
+    else
+        echo "[$(date)] ⚠️ Docker attivo ma container $TARGET_CONTAINER fermo."
+    fi
+    deploy_docker_compose
+else
+    echo "[$(date)] ✅ Container $TARGET_CONTAINER già attivo."
 fi
 
 # Verifica se ci sono modifiche rispetto all'ultimo deploy
 if [ -f "$HASH_FILE" ] && [ "$CURRENT_HASH" == "$(cat "$HASH_FILE")" ]; then
-    echo "[$(date)] Nessun cambiamento, fine."
-
-    # Se il container non è attivo...
-    if ! docker ps --format '{{.Names}}' | grep -q "^$TARGET_CONTAINER$"; then
-        echo "[$(date)] ⚠️ Container $TARGET_CONTAINER non attivo."
-
-        # Verifica se Docker è attivo
-        if ! systemctl is-active --quiet docker; then
-            echo "[$(date)] 🔄 Docker non attivo. Avvio in corso..."
-            sudo systemctl start docker
-            echo "[$(date)] ✅ Docker avviato."
-        else
-            echo "[$(date)] ⚠️ Docker attivo ma container $TARGET_CONTAINER fermo."
-        fi
-        deploy_docker_compose
-        merge_log
-    else
-        echo "[$(date)] ✅ Container $TARGET_CONTAINER già attivo."
-    fi
-
-
+    echo "[$(date)] Nessun cambiamento."
+    rm -f "$TEMP_LOG_FILE"
     exit 0
 fi
 
 # Salva nuovo hash
 echo "$CURRENT_HASH" > "$HASH_FILE"
 
-echo "[$(date)] 🚨 TROVATE MODIFICHE..."
+echo "[$(date)] 🚨 TROVATE MODIFICHE..."  
 echo "[$(date)] Eseguo docker compose build & up..."
 
 # Docker Compose Down
@@ -101,5 +102,5 @@ deploy_docker_compose
 
 } > "$TEMP_LOG_FILE" 2>&1
 
-# Se siamo arrivati qui, tutto è andato bene → non tenere il log
-rm "$TEMP_LOG_FILE"
+# Se siamo arrivati qui e abbiamo già fatto il merge_log, rimuoviamo il temp log
+rm -f "$TEMP_LOG_FILE"
