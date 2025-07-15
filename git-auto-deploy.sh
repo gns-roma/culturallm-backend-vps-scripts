@@ -49,7 +49,7 @@ git reset --hard origin/develop
 
 # resetta il DB se richiesto
 if git log -1 --pretty=%B | grep -q "RESET_DB"; then
-  echo "⚠️ parametro RESET_DB trovato, eseguo il reset"
+  echo "⚠️ Parametro RESET_DB trovato, eseguo il reset..."
   ./"$REPO_DIR"/clean.sh
 fi
 
