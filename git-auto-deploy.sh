@@ -56,7 +56,6 @@ if [ -x "$PRE_DEPLOY_SCRIPT" ]; then
     "$PRE_DEPLOY_SCRIPT"
 else
     echo "[$(date)] ❌ Nessun pre-deploy script trovato."
-    exit 1
 fi
 
 # Se il container non è attivo...
