@@ -22,9 +22,23 @@ merge_log() {
 on_error() {
     echo "[$(date)] ❌ Errore durante il deploy. Salvando log temporaneo..." >> "$LOG_FILE"
     merge_log
-    rm -f "$TEMP_LOG_FILE"
 }
 trap on_error ERR
+
+stop_docker_compose() {
+    # Docker Compose Down
+    if docker compose down; then
+        echo "[$(date)] ✅ docker compose down eseguito con successo"
+    else
+        echo "[$(date)] ❌ Errore durante docker compose down"
+        exit 1
+    fi
+}
+
+reset_db() {
+    echo "⚠️ Parametro RESET_DB trovato, eseguo il reset..."
+    ./clean.sh
+}
 
 deploy_docker_compose() {
     if docker compose up -d --build; then
@@ -37,6 +51,8 @@ deploy_docker_compose() {
     fi
 }
 
+
+
 cd "$REPO_DIR" || exit 1
 
 {
@@ -47,11 +63,6 @@ echo "[$(date)] Inizio controllo aggiornamenti..."
 git fetch origin develop
 git reset --hard origin/develop
 
-# resetta il DB se richiesto
-if git log -1 --pretty=%B | grep -q "RESET_DB"; then
-  echo "⚠️ Parametro RESET_DB trovato, eseguo il reset..."
-  ./"$REPO_DIR"/clean.sh
-fi
 
 # Prendi l'hash attuale
 CURRENT_HASH=$(git rev-parse HEAD)
@@ -83,8 +94,7 @@ fi
 
 # Verifica se ci sono modifiche rispetto all'ultimo deploy
 if [ -f "$HASH_FILE" ] && [ "$CURRENT_HASH" == "$(cat "$HASH_FILE")" ]; then
-    echo "[$(date)] Nessun cambiamento."
-    rm -f "$TEMP_LOG_FILE"
+    echo "[$(date)] Nessun cambiamento." >> "$LOG_FILE"
     exit 0
 fi
 
@@ -94,12 +104,11 @@ echo "$CURRENT_HASH" > "$HASH_FILE"
 echo "[$(date)] 🚨 TROVATE MODIFICHE..."  
 echo "[$(date)] Eseguo docker compose build & up..."
 
-# Docker Compose Down
-if docker compose down; then
-    echo "[$(date)] ✅ docker compose down eseguito con successo"
-else
-    echo "[$(date)] ❌ Errore durante docker compose down"
-    exit 1
+stop_docker_compose
+
+# resetta il DB se richiesto
+if git log -1 --pretty=%B | grep -q "RESET_DB"; then
+    reset_db
 fi
 
 # Docker Compose Up
@@ -108,4 +117,3 @@ deploy_docker_compose
 } > "$TEMP_LOG_FILE" 2>&1
 
 # Se siamo arrivati qui e abbiamo già fatto il merge_log, rimuoviamo il temp log
-rm -f "$TEMP_LOG_FILE"
